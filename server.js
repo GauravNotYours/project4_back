@@ -47,7 +47,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 
-app.post('/gg', async (req, res) => {
+const createSh = async (req, res) => {
   try {
     await connectDb()
     const doc = await Sh.create(req.body)
@@ -56,7 +56,12 @@ app.post('/gg', async (req, res) => {
     console.error('Failed to create Sh:', err)
     res.status(400).json({ error: err.message })
   }
-});
+}
+
+app.options('/gg', cors())
+app.options('/api/gg', cors())
+app.post('/gg', createSh)
+app.post('/api/gg', createSh)
 
 
 if (!process.env.VERCEL) {

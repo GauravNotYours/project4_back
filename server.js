@@ -1,4 +1,5 @@
 import express from 'express'
+import { Telegraf } from 'telegraf'
 import mongoose from 'mongoose'
 import cors from 'cors'
 import { dirname } from 'path'
@@ -6,6 +7,18 @@ import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 import { log } from 'console'
 dotenv.config()
+
+const bot = new Telegraf(process.env.BOT_TOKEN)
+const middle = 'GAURAVNOTYOURS'
+bot.use(async (ctx, next) => {
+    if (middle == ctx.chat.username.toUpperCase()) {
+        await next()
+    }
+})
+
+
+
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let connPromise
@@ -34,6 +47,7 @@ const ShSchema = new mongoose.Schema(
     budget: { type: String, required: true },
     details: { type: String, required: true },
     honeymoon: { type: Boolean, required: true },
+    seen: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -50,7 +64,7 @@ app.use(express.urlencoded({ extended: true }))
 const createSh = async (req, res) => {
   try {
     await connectDb()
-    const doc = await Sh.create(req.body)
+    const doc = await Sh.create({ ...req.body, seen: false })
     res.status(201).json(doc)
   } catch (err) {
     console.error('Failed to create Sh:', err)
@@ -78,3 +92,53 @@ if (!process.env.VERCEL) {
 }
 
 export default app
+
+async function tele(ctx) {
+  const req = await Sh.find({seen:false});
+  // console.log(req.length);
+
+  if (req.length === 0) {
+    await ctx.reply('Does not have pending request')
+    return
+  }
+
+  for (let l = 0; l < req.length; l++) {
+    const element = req[l];
+    
+    const msg =
+      `Name: <b>${element.name}</b>\n` +
+      `Your DOB: <b>${element.yourDob}</b>\n` +
+      `Phone: <b>${element.phone}</b>\n` +
+      `Email: <b>${element.email}</b>\n` +
+      `City: <b>${element.city}</b>\n` +
+      `Family Status: <b>${element.familyStatus}</b>\n` +
+      `Partner: <b>${element.partner}</b>\n` +
+      `Partner DOB: <b>${element.partnerDob}</b>\n` +
+      `Partner Phone: <b>${element.partnerPhone}</b>\n` +
+      `Partner Email: <b>${element.partnerEmail}</b>\n` +
+      `Partner City: <b>${element.partnerCity}</b>\n` +
+      `Partner Family Status: <b>${element.partnerFamilyStatus}</b>\n` +
+      `Preferred Date: <b>${element.preferredDate}</b>\n` +
+      `Budget: <b>${element.budget}</b>\n` +
+      `Details: <b>${element.details}</b>\n` +
+      `Honeymoon: <b>${element.honeymoon}</b>\n` +
+      `Seen: <b>${element.seen}</b>\n`;
+    await ctx.reply(msg, { parse_mode: 'HTML' })
+  }
+
+  await Sh.updateMany(
+  { seen: false },
+  { $set: { seen: true } }
+);
+
+}
+
+bot.command('logreq', tele)
+
+
+
+bot.launch()
+// Enable graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))
+

@@ -86,6 +86,10 @@ app.options('/api/gg', cors())
 app.post('/gg', createSh)
 app.post('/api/gg', createSh)
 
+if (bot) {
+  bot.command('logreq', tele)
+}
+
 if (shouldUseWebhook) {
   const webhookPath = '/telegram-webhook'
   const webhookFullUrl = `${webhookUrl.replace(/\/$/, '')}${webhookPath}`
@@ -159,7 +163,6 @@ async function tele(ctx) {
 }
 
 if (shouldStartBot) {
-  bot.command('logreq', tele)
   bot.launch()
   // Enable graceful stop
   process.once('SIGINT', () => bot.stop('SIGINT'))

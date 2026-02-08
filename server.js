@@ -8,13 +8,20 @@ import dotenv from 'dotenv'
 import { log } from 'console'
 dotenv.config()
 
-const bot = new Telegraf(process.env.BOT_TOKEN)
-const middle = 'GAURAVNOTYOURS'
-bot.use(async (ctx, next) => {
-    if (middle == ctx.chat.username.toUpperCase()) {
-        await next()
+const isVercel = Boolean(process.env.VERCEL)
+const botToken = process.env.BOT_TOKEN
+const shouldStartBot = !isVercel && Boolean(botToken)
+let bot
+
+if (shouldStartBot) {
+  bot = new Telegraf(botToken)
+  const middle = 'GAURAVNOTYOURS'
+  bot.use(async (ctx, next) => {
+    if (middle === String(ctx.chat?.username || '').toUpperCase()) {
+      await next()
     }
-})
+  })
+}
 
 
 
@@ -94,7 +101,8 @@ if (!process.env.VERCEL) {
 export default app
 
 async function tele(ctx) {
-  const req = await Sh.find({seen:false});
+  await connectDb()
+  const req = await Sh.find({ seen: false })
   // console.log(req.length);
 
   if (req.length === 0) {
@@ -126,19 +134,16 @@ async function tele(ctx) {
     await ctx.reply(msg, { parse_mode: 'HTML' })
   }
 
-  await Sh.updateMany(
-  { seen: false },
-  { $set: { seen: true } }
-);
+  await Sh.updateMany({ seen: false }, { $set: { seen: true } })
 
 }
 
-bot.command('logreq', tele)
+if (shouldStartBot) {
+  bot.command('logreq', tele)
+  bot.launch()
+  // Enable graceful stop
+  process.once('SIGINT', () => bot.stop('SIGINT'))
+  process.once('SIGTERM', () => bot.stop('SIGTERM'))
+}
 
-
-
-bot.launch()
-// Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'))
-process.once('SIGTERM', () => bot.stop('SIGTERM'))
 

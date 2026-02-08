@@ -87,6 +87,9 @@ app.post('/gg', createSh)
 app.post('/api/gg', createSh)
 
 if (bot) {
+  bot.start(async (ctx) => {
+    await ctx.reply('bot ok')
+  })
   bot.command('logreq', tele)
 }
 

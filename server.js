@@ -10,10 +10,12 @@ dotenv.config()
 
 const isVercel = Boolean(process.env.VERCEL)
 const botToken = process.env.BOT_TOKEN
+const webhookUrl = process.env.WEBHOOK_URL
 const shouldStartBot = !isVercel && Boolean(botToken)
+const shouldUseWebhook = isVercel && Boolean(botToken) && Boolean(webhookUrl)
 let bot
 
-if (shouldStartBot) {
+if (botToken) {
   bot = new Telegraf(botToken)
   const middle = 'GAURAVNOTYOURS'
   bot.use(async (ctx, next) => {
@@ -83,6 +85,24 @@ app.options('/gg', cors())
 app.options('/api/gg', cors())
 app.post('/gg', createSh)
 app.post('/api/gg', createSh)
+
+if (shouldUseWebhook) {
+  const webhookPath = '/telegram-webhook'
+  const webhookFullUrl = `${webhookUrl.replace(/\/$/, '')}${webhookPath}`
+
+  bot.telegram.setWebhook(webhookFullUrl).catch((err) => {
+    console.error('Failed to set Telegram webhook:', err)
+  })
+
+  app.post(webhookPath, (req, res) => {
+    bot.handleUpdate(req.body, res).catch((err) => {
+      console.error('Failed to handle Telegram update:', err)
+      if (!res.headersSent) {
+        res.sendStatus(500)
+      }
+    })
+  })
+}
 
 
 if (!process.env.VERCEL) {

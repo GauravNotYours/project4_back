@@ -11,17 +11,36 @@ dotenv.config()
 const isVercel = Boolean(process.env.VERCEL)
 const botToken = process.env.BOT_TOKEN
 const webhookUrl = process.env.WEBHOOK_URL
+const allowedUsername = String(
+  process.env.ALLOWED_USERNAME || 'GAURAVNOTYOURS'
+).toUpperCase()
+const allowedUserId = process.env.ALLOWED_USER_ID
 const shouldStartBot = !isVercel && Boolean(botToken)
 const shouldUseWebhook = isVercel && Boolean(botToken) && Boolean(webhookUrl)
 let bot
 
 if (botToken) {
   bot = new Telegraf(botToken)
-  const middle = 'GAURAVNOTYOURS'
   bot.use(async (ctx, next) => {
-    if (middle === String(ctx.chat?.username || '').toUpperCase()) {
-      await next()
+    const username = String(ctx.chat?.username || '').toUpperCase()
+    const userId = String(ctx.from?.id || '')
+    const isAllowed =
+      (allowedUsername && username === allowedUsername) ||
+      (allowedUserId && userId === String(allowedUserId))
+
+    if (!isAllowed) {
+      const msg =
+        'Not authorized.\n' +
+        `Username: ${ctx.chat?.username || 'none'}\n` +
+        `User ID: ${ctx.from?.id || 'unknown'}`
+      await ctx.reply(msg)
+      return
     }
+
+    await next()
+  })
+  bot.catch((err, ctx) => {
+    console.error('Telegraf error:', err, ctx.update)
   })
 }
 

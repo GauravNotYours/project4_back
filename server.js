@@ -93,7 +93,7 @@ app.use((req, res, next) => {
   if (isServerStopped) {
     return res
       .status(503)
-      .json({ error: 'Server stopped. Redeploy to resume service.' })
+      .json({ error: 'Server stopped.' })
   }
   next()
 })
@@ -127,7 +127,7 @@ if (bot) {
     await ctx.reply('bot ok')
   })
   bot.command('logreq', tele)
-  bot.command('stop', async (ctx) => {
+  bot.command('stop4', async (ctx) => {
     isServerStopped = true
     await ctx.reply('Server stopped. Redeploy to resume.')
 

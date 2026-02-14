@@ -18,6 +18,8 @@ const allowedUserId = process.env.ALLOWED_USER_ID
 const shouldStartBot = !isVercel && Boolean(botToken)
 const shouldUseWebhook = isVercel && Boolean(botToken) && Boolean(webhookUrl)
 let bot
+let isServerStopped = false
+let httpServer
 
 if (botToken) {
   bot = new Telegraf(botToken)
@@ -87,6 +89,14 @@ const port = process.env.PORT || 3000
 app.use(cors());
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use((req, res, next) => {
+  if (isServerStopped) {
+    return res
+      .status(503)
+      .json({ error: 'Server stopped. Redeploy to resume service.' })
+  }
+  next()
+})
 
 
 const createSh = async (req, res) => {
@@ -106,10 +116,35 @@ app.post('/gg', createSh)
 app.post('/api/gg', createSh)
 
 if (bot) {
+  bot.use(async (ctx, next) => {
+    if (isServerStopped) {
+      return
+    }
+    await next()
+  })
+
   bot.start(async (ctx) => {
     await ctx.reply('bot ok')
   })
   bot.command('logreq', tele)
+  bot.command('stop', async (ctx) => {
+    isServerStopped = true
+    await ctx.reply('Server stopped. Redeploy to resume.')
+
+    if (shouldStartBot) {
+      bot.stop('Manual stop command')
+    }
+
+    if (httpServer) {
+      httpServer.close((err) => {
+        if (err) {
+          console.error('Error while stopping HTTP server:', err)
+          return
+        }
+        console.log('HTTP server stopped by /stop command')
+      })
+    }
+  })
 }
 
 if (shouldUseWebhook) {
@@ -134,7 +169,7 @@ if (shouldUseWebhook) {
 if (!process.env.VERCEL) {
   connectDb()
     .then(() => {
-      app.listen(port, () => {
+      httpServer = app.listen(port, () => {
         console.log(`Example app listening on port ${port}`)
       })
     })

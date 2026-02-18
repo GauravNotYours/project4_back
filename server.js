@@ -130,6 +130,8 @@ if (bot) {
   bot.command('stop4', async (ctx) => {
     isServerStopped = true
     await ctx.reply('Server stopped. Redeploy to resume.')
+    console.log("server stoped by telegram bot command");
+    
 
     if (shouldStartBot) {
       bot.stop('Manual stop command')

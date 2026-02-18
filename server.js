@@ -121,7 +121,6 @@ if (bot) {
     const text = String(ctx.message?.text || '')
     const isStartCommand = text.startsWith('/start4')
     const isStopCommand = text.startsWith('/stop4')
-    const isStartMessage = text.startsWith('/start')
 
     if (isServerStopped && !isStartCommand && !isStopCommand && !isStartMessage) {
       await ctx.reply('Server is stopped. Use /start4 to start it again.')
@@ -130,9 +129,6 @@ if (bot) {
     await next()
   })
 
-  bot.start(async (ctx) => {
-    await ctx.reply('bot ok')
-  })
   bot.command('logreq', tele)
   bot.command('stop4', async (ctx) => {
     if (isServerStopped) {

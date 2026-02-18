@@ -247,6 +247,9 @@ async function tele(ctx) {
 
   await Sh.updateMany({ seen: false }, { $set: { seen: true } })
 
+  console.log("server get logreq request");
+  
+
 }
 
 if (shouldStartBot) {

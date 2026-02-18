@@ -20,6 +20,7 @@ const shouldUseWebhook = isVercel && Boolean(botToken) && Boolean(webhookUrl)
 let bot
 let isServerStopped = false
 let httpServer
+const isHttpServerListening = () => Boolean(httpServer?.listening)
 
 if (botToken) {
   bot = new Telegraf(botToken)
@@ -90,7 +91,7 @@ app.use(cors());
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use((req, res, next) => {
-  if (isServerStopped) {
+  if (isServerStopped && req.path !== '/telegram-webhook') {
     return res
       .status(503)
       .json({ error: 'Server stopped.' })
@@ -117,7 +118,13 @@ app.post('/api/gg', createSh)
 
 if (bot) {
   bot.use(async (ctx, next) => {
-    if (isServerStopped) {
+    const text = String(ctx.message?.text || '')
+    const isStartCommand = text.startsWith('/start4')
+    const isStopCommand = text.startsWith('/stop4')
+    const isStartMessage = text.startsWith('/start')
+
+    if (isServerStopped && !isStartCommand && !isStopCommand && !isStartMessage) {
+      await ctx.reply('Server is stopped. Use /start4 to start it again.')
       return
     }
     await next()
@@ -128,14 +135,14 @@ if (bot) {
   })
   bot.command('logreq', tele)
   bot.command('stop4', async (ctx) => {
-    isServerStopped = true
-    await ctx.reply('Server stopped. Redeploy to resume.')
-    console.log("server stoped by telegram bot command");
-    
-
-    if (shouldStartBot) {
-      bot.stop('Manual stop command')
+    if (isServerStopped) {
+      await ctx.reply('Server is already stopped.')
+      return
     }
+
+    isServerStopped = true
+    await ctx.reply('Server stopped. Use /start4 to resume.')
+    console.log("server stoped by telegram bot command");
 
     if (httpServer) {
       httpServer.close((err) => {
@@ -144,8 +151,33 @@ if (bot) {
           return
         }
         console.log('HTTP server stopped by /stop command')
+        httpServer = undefined
       })
     }
+  })
+
+  bot.command('start4', async (ctx) => {
+    if (!isServerStopped && isHttpServerListening()) {
+      await ctx.reply('Server is already running.')
+      return
+    }
+
+    isServerStopped = false
+
+    if (!isHttpServerListening() && !process.env.VERCEL) {
+      httpServer = app.listen(port, () => {
+        console.log(`Example app listening on port ${port}`)
+      })
+    }
+
+    await ctx.reply('Server started.')
+    console.log('server started by telegram bot command')
+  })
+
+  bot.command('status4', async (ctx) => {
+    const running = !isServerStopped && (isVercel || isHttpServerListening())
+    const statusText = running ? 'running' : 'stopped'
+    await ctx.reply(`Server is ${statusText}.`)
   })
 }
 
@@ -227,5 +259,3 @@ if (shouldStartBot) {
   process.once('SIGINT', () => bot.stop('SIGINT'))
   process.once('SIGTERM', () => bot.stop('SIGTERM'))
 }
-
-

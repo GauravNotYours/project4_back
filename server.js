@@ -243,11 +243,12 @@ async function tele(ctx) {
       `Honeymoon: <b>${element.honeymoon}</b>\n` +
       `Seen: <b>${element.seen}</b>\n`;
     await ctx.reply(msg, { parse_mode: 'HTML' })
+    console.log("server get logreq request");
   }
 
   await Sh.updateMany({ seen: false }, { $set: { seen: true } })
 
-  console.log("server get logreq request");
+
   
 
 }
